@@ -7,6 +7,7 @@ Usage: python stock.py <TICKER>
 
 import sys
 import argparse
+import os
 from datetime import datetime
 import yfinance as yf
 import requests
@@ -139,15 +140,117 @@ def get_rsi_signal(rsi):
         return "NEUTRAL", Colors.YELLOW
 
 
-def get_macro_data():
-    """Fetch macroeconomic data"""
+# FRED API Configuration
+FRED_API_KEY = os.environ.get('FRED_API_KEY')
+FRED_API_BASE_URL = "https://api.stlouisfed.org/fred/series/observations"
+
+
+def get_fred_data(series_id, api_key=None):
+    """Fetch data from FRED API for a given series ID"""
+    if not api_key:
+        api_key = FRED_API_KEY
+    
+    if not api_key:
+        return None, None
+    
     try:
-        # Using free API for interest rates (FRED API is free but requires registration)
-        # For demo purposes, we'll use a simple approach
-        # Note: In production, you'd want to use FRED API or similar
-        return {}
+        url = f"{FRED_API_BASE_URL}"
+        params = {
+            'series_id': series_id,
+            'api_key': api_key,
+            'file_type': 'json',
+            'limit': 1,
+            'sort_order': 'desc'
+        }
+        
+        response = requests.get(url, params=params, timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            if 'observations' in data and len(data['observations']) > 0:
+                latest = data['observations'][0]
+                value = latest.get('value')
+                if value and value != '.':
+                    try:
+                        return float(value), latest.get('date')
+                    except (ValueError, TypeError):
+                        return None, None
+        return None, None
     except Exception as e:
-        return {}
+        return None, None
+
+
+def get_macro_data():
+    """Fetch macroeconomic data from FRED API"""
+    macro_data = {}
+    
+    # Check if API key is available
+    if not FRED_API_KEY:
+        return macro_data
+    
+    try:
+        # Federal Funds Rate (Interest Rates)
+        fed_rate, fed_date = get_fred_data('FEDFUNDS')
+        if fed_rate is not None:
+            macro_data['interest_rate'] = {
+                'value': fed_rate,
+                'date': fed_date,
+                'label': 'Federal Funds Rate'
+            }
+        
+        # Consumer Price Index (Inflation - YoY)
+        # Get current and year-ago CPI
+        cpi_current, cpi_date = get_fred_data('CPIAUCSL')
+        if cpi_current is not None and cpi_date:
+            try:
+                from datetime import datetime, timedelta
+                # Try to get year-ago data
+                year_ago_date = (datetime.strptime(cpi_date, '%Y-%m-%d') - timedelta(days=365)).strftime('%Y-%m-%d')
+                url = f"{FRED_API_BASE_URL}"
+                params = {
+                    'series_id': 'CPIAUCSL',
+                    'api_key': FRED_API_KEY,
+                    'file_type': 'json',
+                    'observation_start': year_ago_date,
+                    'limit': 1,
+                    'sort_order': 'desc'
+                }
+                response = requests.get(url, params=params, timeout=5)
+                if response.status_code == 200:
+                    data = response.json()
+                    if 'observations' in data and len(data['observations']) > 0:
+                        cpi_year_ago = float(data['observations'][0].get('value', 0))
+                        if cpi_year_ago > 0:
+                            inflation_rate = ((cpi_current - cpi_year_ago) / cpi_year_ago) * 100
+                            macro_data['inflation'] = {
+                                'value': inflation_rate,
+                                'date': cpi_date,
+                                'label': 'CPI Inflation (YoY)'
+                            }
+            except Exception:
+                pass
+        
+        # Unemployment Rate
+        unemployment, unemp_date = get_fred_data('UNRATE')
+        if unemployment is not None:
+            macro_data['unemployment'] = {
+                'value': unemployment,
+                'date': unemp_date,
+                'label': 'Unemployment Rate'
+            }
+        
+        # GDP Growth Rate (Quarterly)
+        gdp, gdp_date = get_fred_data('GDPC1')  # Real GDP
+        if gdp is not None:
+            macro_data['gdp'] = {
+                'value': gdp,
+                'date': gdp_date,
+                'label': 'Real GDP'
+            }
+        
+    except Exception as e:
+        pass
+    
+    return macro_data
 
 
 def format_number(value):
@@ -630,15 +733,44 @@ def display_macro_sector_data(data):
     """Display macroeconomic and sector data"""
     info = data['info']
     
+    # Fetch macro data from FRED API (only if API key is available)
+    macro_data = {}
+    if FRED_API_KEY:
+        print(f"{Colors.YELLOW}Fetching macroeconomic data from FRED API...{Colors.END}")
+        macro_data = get_macro_data()
+    else:
+        print(f"{Colors.YELLOW}Note: FRED API key not set. Macroeconomic data will not be fetched.{Colors.END}")
+    
     print(f"\n{Colors.BOLD}{Colors.CYAN}{'='*80}{Colors.END}")
     print(f"{Colors.BOLD}{Colors.CYAN}4. MACROECONOMIC AND SECTOR METRICS{Colors.END}")
     print(f"{Colors.BOLD}{Colors.CYAN}{'='*80}{Colors.END}")
     
-    # Interest rates - not directly available from stock data
-    print(f"{Colors.BOLD}Interest Rates:{Colors.END} {Colors.WHITE}N/A (requires external macro data API){Colors.END}")
+    # Interest rates from FRED
+    if 'interest_rate' in macro_data:
+        ir_data = macro_data['interest_rate']
+        print(f"{Colors.BOLD}Interest Rate ({ir_data['label']}):{Colors.END} {Colors.YELLOW}{ir_data['value']:.2f}%{Colors.END} (as of {ir_data['date']})")
+    else:
+        print(f"{Colors.BOLD}Interest Rate:{Colors.END} {Colors.WHITE}N/A (data unavailable){Colors.END}")
     
-    # Inflation - not directly available
-    print(f"{Colors.BOLD}Inflation:{Colors.END} {Colors.WHITE}N/A (requires external macro data API){Colors.END}")
+    # Inflation from FRED
+    if 'inflation' in macro_data:
+        inf_data = macro_data['inflation']
+        inflation_color = Colors.RED if inf_data['value'] > 3 else Colors.GREEN if inf_data['value'] < 2 else Colors.YELLOW
+        print(f"{Colors.BOLD}Inflation ({inf_data['label']}):{Colors.END} {inflation_color}{inf_data['value']:.2f}%{Colors.END} (as of {inf_data['date']})")
+    else:
+        print(f"{Colors.BOLD}Inflation:{Colors.END} {Colors.WHITE}N/A (data unavailable){Colors.END}")
+    
+    # Unemployment Rate
+    if 'unemployment' in macro_data:
+        unemp_data = macro_data['unemployment']
+        print(f"{Colors.BOLD}Unemployment Rate:{Colors.END} {Colors.YELLOW}{unemp_data['value']:.2f}%{Colors.END} (as of {unemp_data['date']})")
+    else:
+        print(f"{Colors.BOLD}Unemployment Rate:{Colors.END} {Colors.WHITE}N/A (data unavailable){Colors.END}")
+    
+    # GDP
+    if 'gdp' in macro_data:
+        gdp_data = macro_data['gdp']
+        print(f"{Colors.BOLD}Real GDP:{Colors.END} {Colors.GREEN}${gdp_data['value']:.2f}B{Colors.END} (as of {gdp_data['date']})")
     
     # Consumer demand - use revenue growth as proxy
     revenue_growth = info.get('revenueGrowth')
@@ -661,6 +793,9 @@ def display_macro_sector_data(data):
     # Additional sector info
     beta = info.get('beta')
     print(f"{Colors.BOLD}Beta (Market Correlation):{Colors.END} {Colors.YELLOW}{format_ratio(beta)}{Colors.END}")
+    
+    # Store macro data for export
+    data['macro_data'] = macro_data
 
 
 def collect_all_data(data, ticker):
@@ -839,6 +974,7 @@ def collect_all_data(data, ticker):
             'earnings_growth': earnings_growth,
             'beta': info.get('beta'),
         },
+        'macro_data': data.get('macro_data', {}),
         'earnings_trend': earnings_trend
     }
 
@@ -980,11 +1116,33 @@ def export_to_excel(data_dict, output_path):
         row += 1
         
         macro = data_dict['macro_sector']
-        macro_data = [
+        fred_data = data_dict.get('macro_data', {})
+        
+        macro_data = []
+        
+        # Add FRED data
+        if 'interest_rate' in fred_data:
+            ir = fred_data['interest_rate']
+            macro_data.append([f"Interest Rate ({ir['label']})", f"{ir['value']:.2f}% (as of {ir['date']})"])
+        
+        if 'inflation' in fred_data:
+            inf = fred_data['inflation']
+            macro_data.append([f"Inflation ({inf['label']})", f"{inf['value']:.2f}% (as of {inf['date']})"])
+        
+        if 'unemployment' in fred_data:
+            unemp = fred_data['unemployment']
+            macro_data.append(['Unemployment Rate', f"{unemp['value']:.2f}% (as of {unemp['date']})"])
+        
+        if 'gdp' in fred_data:
+            gdp = fred_data['gdp']
+            macro_data.append(['Real GDP', f"${gdp['value']:.2f}B (as of {gdp['date']})"])
+        
+        # Add sector data
+        macro_data.extend([
             ['Revenue Growth', f"{macro['revenue_growth']:.2f}%" if macro['revenue_growth'] is not None else 'N/A'],
             ['Earnings Growth', f"{macro['earnings_growth']:.2f}%" if macro['earnings_growth'] is not None else 'N/A'],
             ['Beta (Market Correlation)', format_ratio(macro['beta'])],
-        ]
+        ])
         
         for item in macro_data:
             ws[f'A{row}'] = item[0]
@@ -1178,11 +1336,33 @@ def export_to_pdf(data_dict, output_path):
         
         # Macro/Sector Metrics
         macro = data_dict['macro_sector']
-        macro_data = [
+        fred_data = data_dict.get('macro_data', {})
+        
+        macro_data = []
+        
+        # Add FRED data
+        if 'interest_rate' in fred_data:
+            ir = fred_data['interest_rate']
+            macro_data.append([f"Interest Rate ({ir['label']})", f"{ir['value']:.2f}% (as of {ir['date']})"])
+        
+        if 'inflation' in fred_data:
+            inf = fred_data['inflation']
+            macro_data.append([f"Inflation ({inf['label']})", f"{inf['value']:.2f}% (as of {inf['date']})"])
+        
+        if 'unemployment' in fred_data:
+            unemp = fred_data['unemployment']
+            macro_data.append(['Unemployment Rate', f"{unemp['value']:.2f}% (as of {unemp['date']})"])
+        
+        if 'gdp' in fred_data:
+            gdp = fred_data['gdp']
+            macro_data.append(['Real GDP', f"${gdp['value']:.2f}B (as of {gdp['date']})"])
+        
+        # Add sector data
+        macro_data.extend([
             ['Revenue Growth', f"{macro['revenue_growth']:.2f}%" if macro['revenue_growth'] else 'N/A'],
             ['Earnings Growth', f"{macro['earnings_growth']:.2f}%" if macro['earnings_growth'] else 'N/A'],
             ['Beta (Market Correlation)', format_ratio(macro['beta'])],
-        ]
+        ])
         add_section("MACROECONOMIC AND SECTOR METRICS", macro_data)
         
         # Earnings Trend

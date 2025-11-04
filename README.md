@@ -5,6 +5,7 @@ A Python command-line tool that collects comprehensive company fundamental data 
 ## Features
 
 ### 📊 Price Information
+
 - **Current Price** - Real-time stock price
 - **YTD % Change** - Year-to-date performance with color coding (green for positive, red for negative)
 - **YTD High/Low** - Highest and lowest prices for the current year with dates
@@ -12,6 +13,7 @@ A Python command-line tool that collects comprehensive company fundamental data 
 - **Distance from ATH/ATL** - Percentage distance from all-time highs and lows
 
 ### 💰 Financial Metrics
+
 - Revenue (Sales)
 - Earnings / Net Income
 - Earnings Per Share (EPS)
@@ -21,18 +23,32 @@ A Python command-line tool that collects comprehensive company fundamental data 
 - Gross Margin / Net Margin
 
 ### 📈 Valuation Metrics
+
 - P/E (Price-to-Earnings) Ratio
 - P/B (Price-to-Book) Ratio
 - P/S (Price-to-Sales) Ratio
 - EV/EBITDA
 
 ### 🏢 Operational Metrics
+
 - Market Capitalization
 - Business Model Summary
 - Sector and Industry Classification
 - Company Size (Full-Time Employees)
 
+### 📈 Earnings Trend
+
+- Historical earnings data (quarterly or annual)
+- Period-over-period percentage changes
+- Overall trend direction (increasing/decreasing/stable)
+- Last 8 periods displayed
+
 ### 🌍 Macroeconomic & Sector Metrics
+
+- **Interest Rate** (Federal Funds Rate) - From FRED API
+- **Inflation** (CPI Year-over-Year) - From FRED API
+- **Unemployment Rate** - From FRED API
+- **Real GDP** - From FRED API
 - Revenue Growth (Demand Proxy)
 - Earnings Growth (Industry Trend Proxy)
 - Beta (Market Correlation)
@@ -40,6 +56,7 @@ A Python command-line tool that collects comprehensive company fundamental data 
 ## Installation
 
 ### Prerequisites
+
 - Python 3.7 or higher
 - pip (Python package manager)
 
@@ -48,11 +65,47 @@ A Python command-line tool that collects comprehensive company fundamental data 
 1. **Clone or download this repository**
 
 2. **Install dependencies:**
+
    ```bash
    pip install -r requirements.txt
    ```
 
-   Or use the automated setup script:
+3. **Set up FRED API Key (Optional but Recommended)**
+
+   To get macroeconomic data (interest rates, inflation, unemployment, GDP), you need a free FRED API key:
+
+   - Get your free API key from: https://fred.stlouisfed.org/docs/api/api_key.html
+   - Set it as an environment variable:
+
+   **On macOS/Linux:**
+
+   ```bash
+   export FRED_API_KEY="your_api_key_here"
+   ```
+
+   **On Windows (PowerShell):**
+
+   ```powershell
+   $env:FRED_API_KEY="your_api_key_here"
+   ```
+
+   **On Windows (Command Prompt):**
+
+   ```cmd
+   set FRED_API_KEY=your_api_key_here
+   ```
+
+   **Persistent setup (recommended):**
+
+   Add to your `~/.bashrc`, `~/.zshrc`, or `~/.profile`:
+
+   ```bash
+   export FRED_API_KEY="your_api_key_here"
+   ```
+
+   **Note:** If the FRED API key is not set, the program will still work but macroeconomic data will show as "N/A". The program will display a note indicating that the API key is not set.
+
+4. **Use the automated setup script:**
    ```bash
    ./run.sh AAPL
    ```
@@ -69,6 +122,7 @@ The `run.sh` script automatically sets up the environment and runs the program:
 ```
 
 Example:
+
 ```bash
 ./run.sh AAPL
 ./run.sh MSFT
@@ -76,6 +130,7 @@ Example:
 ```
 
 The script will:
+
 - Create a virtual environment if it doesn't exist
 - Install/update dependencies
 - Run the stock analysis
@@ -89,6 +144,7 @@ python stock.py <TICKER>
 ```
 
 Or make the script executable and run:
+
 ```bash
 chmod +x stock.py
 ./stock.py AAPL
@@ -137,39 +193,68 @@ All dependencies are listed in `requirements.txt`.
 
 ## Data Sources
 
-This tool uses **yfinance** (Yahoo Finance API) which is:
+This tool uses multiple data sources:
+
+### yfinance (Yahoo Finance API)
+
 - ✅ Free to use
 - ✅ No API key required
 - ✅ Provides real-time and historical stock data
 - ✅ Includes financial statements and company information
 
+### FRED API (Federal Reserve Economic Data)
+
+- ✅ Free to use (requires free API key)
+- ✅ Provides macroeconomic data:
+  - Federal Funds Rate (Interest Rates)
+  - Consumer Price Index (Inflation)
+  - Unemployment Rate
+  - Real GDP
+- 🔑 Get your free API key: https://fred.stlouisfed.org/docs/api/api_key.html
+- Set the `FRED_API_KEY` environment variable to enable macroeconomic data
+
 ## Limitations
 
 Some metrics are marked as "N/A" because they require:
+
 - **Qualitative analysis** - Business model details, competitive advantage, management quality
-- **External macroeconomic APIs** - Interest rates, inflation (would require additional API keys)
+- **FRED API Key** - Interest rates, inflation, unemployment, and GDP data require a FRED API key (set via `FRED_API_KEY` environment variable). If not set, these metrics will show as "N/A"
 - **Industry-specific research** - Market share, regulations, commodity prices
 
 ## Troubleshooting
 
 ### Error: "Could not fetch data for ticker XXX"
+
 - Verify the ticker symbol is correct (e.g., AAPL, MSFT, TSLA)
 - Check your internet connection
 - Some tickers may not be available on Yahoo Finance
 
 ### Virtual Environment Issues
+
 If you encounter issues with the virtual environment:
+
 ```bash
 rm -rf venv
 ./run.sh <TICKER>
 ```
 
 ### Permission Denied (run.sh)
+
 If you get a permission denied error:
+
 ```bash
 chmod +x run.sh
 ./run.sh <TICKER>
 ```
+
+### FRED API Key Not Working
+
+If macroeconomic data shows as "N/A":
+
+- Verify your API key is set correctly: `echo $FRED_API_KEY` (macOS/Linux) or `echo %FRED_API_KEY%` (Windows)
+- Make sure you've exported the environment variable in your current shell session
+- Check that your API key is valid at https://fred.stlouisfed.org/docs/api/api_key.html
+- The program will work without the API key, but macroeconomic metrics will be unavailable
 
 ## Project Structure
 
@@ -192,4 +277,3 @@ Feel free to submit issues, fork the repository, and create pull requests for an
 ## Disclaimer
 
 This tool is for informational purposes only. It does not provide financial advice. Always do your own research and consult with a financial advisor before making investment decisions.
-
