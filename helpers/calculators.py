@@ -418,12 +418,14 @@ def generate_trading_recommendation(data):
     - Price action trend
     - Analyst ratings
     - RSI indicator
+    - Zacks recommendation
     
     Returns a dictionary with recommendation, score, and detailed reasons
     """
     info = data.get('info', {})
     history = data.get('history')
     recommendations = data.get('recommendations')
+    zacks_data = data.get('zacks_data')
     
     current_price = info.get('currentPrice') or info.get('regularMarketPrice') or info.get('previousClose')
     
@@ -431,7 +433,8 @@ def generate_trading_recommendation(data):
     scores = {
         'price_action': 0,
         'analyst_rating': 0,
-        'rsi': 0
+        'rsi': 0,
+        'zacks': 0
     }
     
     reasons = []
@@ -564,8 +567,59 @@ def generate_trading_recommendation(data):
     if rsi_reason:
         reasons.append(f"RSI: {rsi_reason}")
     
-    # Calculate total score
-    total_score = scores['price_action'] + scores['analyst_rating'] + scores['rsi']
+    # 4. Analyze Zacks Recommendation
+    zacks_score = 0
+    zacks_reason = ""
+    zacks_recommendation = None
+    zacks_rank = None
+    
+    if zacks_data:
+        zacks_recommendation = zacks_data.get('recommendation')
+        zacks_rank = zacks_data.get('rank')
+        
+        if zacks_recommendation:
+            rec_lower = str(zacks_recommendation).lower()
+            if 'strong buy' in rec_lower:
+                zacks_score = 2
+                zacks_reason = f"Zacks Rank: {zacks_rank} (Strong Buy)"
+            elif 'buy' in rec_lower and 'strong' not in rec_lower:
+                zacks_score = 1
+                zacks_reason = f"Zacks Rank: {zacks_rank} (Buy)"
+            elif 'hold' in rec_lower:
+                zacks_score = 0
+                zacks_reason = f"Zacks Rank: {zacks_rank} (Hold)"
+            elif 'strong sell' in rec_lower:
+                zacks_score = -2
+                zacks_reason = f"Zacks Rank: {zacks_rank} (Strong Sell)"
+            elif 'sell' in rec_lower and 'strong' not in rec_lower:
+                zacks_score = -1
+                zacks_reason = f"Zacks Rank: {zacks_rank} (Sell)"
+            else:
+                zacks_reason = f"Zacks Recommendation: {zacks_recommendation}"
+        elif zacks_rank:
+            # Use rank if recommendation text not available
+            if zacks_rank == 1:
+                zacks_score = 2
+                zacks_reason = f"Zacks Rank: {zacks_rank} (Strong Buy)"
+            elif zacks_rank == 2:
+                zacks_score = 1
+                zacks_reason = f"Zacks Rank: {zacks_rank} (Buy)"
+            elif zacks_rank == 3:
+                zacks_score = 0
+                zacks_reason = f"Zacks Rank: {zacks_rank} (Hold)"
+            elif zacks_rank == 4:
+                zacks_score = -1
+                zacks_reason = f"Zacks Rank: {zacks_rank} (Sell)"
+            elif zacks_rank == 5:
+                zacks_score = -2
+                zacks_reason = f"Zacks Rank: {zacks_rank} (Strong Sell)"
+    
+    scores['zacks'] = zacks_score
+    if zacks_reason:
+        reasons.append(f"Zacks: {zacks_reason}")
+    
+    # Calculate total score (now includes Zacks)
+    total_score = scores['price_action'] + scores['analyst_rating'] + scores['rsi'] + scores['zacks']
     
     # Determine recommendation based on total score
     if total_score >= 3:
@@ -612,7 +666,9 @@ def generate_trading_recommendation(data):
         'summary_reason': summary_reason,
         'rsi_value': rsi_value,
         'price_action_trend': trend_data.get('trend', 'UNKNOWN') if trend_data else 'UNKNOWN',
-        'analyst_recommendation': recommendation_mean
+        'analyst_recommendation': recommendation_mean,
+        'zacks_recommendation': zacks_recommendation,
+        'zacks_rank': zacks_rank
     }
 
 
