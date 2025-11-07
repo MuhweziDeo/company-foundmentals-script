@@ -13,8 +13,8 @@ from .formatters import (
 )
 from .data_fetcher import (
     get_financial_data,
-    get_fred_data,
-    get_macro_data
+    get_macro_data,
+    get_zacks_recommendation
 )
 from .calculators import (
     calculate_rsi,
@@ -34,7 +34,8 @@ from .display import (
     display_analyst_ratings,
     display_macro_sector_data,
     display_price_action_trend,
-    display_trading_recommendation
+    display_trading_recommendation,
+    display_zacks_recommendation
 )
 from .export import (
     collect_all_data,
@@ -52,8 +53,8 @@ __all__ = [
     'format_ratio',
     'format_price',
     'get_financial_data',
-    'get_fred_data',
     'get_macro_data',
+    'get_zacks_recommendation',
     'calculate_rsi',
     'get_rsi_signal',
     'get_earnings_trend',
@@ -70,6 +71,7 @@ __all__ = [
     'display_macro_sector_data',
     'display_price_action_trend',
     'display_trading_recommendation',
+    'display_zacks_recommendation',
     'collect_all_data',
     'export_to_excel',
     'export_to_pdf'

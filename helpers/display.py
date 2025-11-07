@@ -718,10 +718,24 @@ def display_trading_recommendation(data):
     rsi_sign = "+" if rsi_score > 0 else ""
     print(f"{Colors.BOLD}RSI Indicator:{Colors.END} {rsi_color}{rsi_sign}{rsi_score:+d}{Colors.END}")
     
+    # Zacks Recommendation Score
+    zacks_score = scores.get('zacks', 0)
+    zacks_color = Colors.GREEN if zacks_score > 0 else Colors.RED if zacks_score < 0 else Colors.YELLOW
+    zacks_sign = "+" if zacks_score > 0 else ""
+    print(f"{Colors.BOLD}Zacks Recommendation:{Colors.END} {zacks_color}{zacks_sign}{zacks_score:+d}{Colors.END}")
+    
     print(f"{Colors.WHITE}{'-' * 50}{Colors.END}")
+    
+    # Calculate maximum possible score (all indicators at maximum bullish)
+    # Price Action: +2, Analyst: +2, RSI: +2, Zacks: +2 = 8 max
+    # Minimum possible score (all indicators at maximum bearish)
+    # Price Action: -2, Analyst: -2, RSI: -2, Zacks: -2 = -8 min
+    max_possible_score = 8  # All indicators bullish
+    min_possible_score = -8  # All indicators bearish
+    
     total_color = Colors.GREEN if total_score > 0 else Colors.RED if total_score < 0 else Colors.YELLOW
     total_sign = "+" if total_score > 0 else ""
-    print(f"{Colors.BOLD}Total Score:{Colors.END} {total_color}{total_sign}{total_score:+d}{Colors.END}")
+    print(f"{Colors.BOLD}Total Score / Overall Score:{Colors.END} {total_color}{total_sign}{total_score:+d}{Colors.END} / {Colors.WHITE}{max_possible_score:+d}{Colors.END} (Range: {min_possible_score:+d} to {max_possible_score:+d})")
     
     # Display detailed reasons
     if reasons:
@@ -762,7 +776,148 @@ def display_trading_recommendation(data):
     else:
         print(f"  {Colors.BOLD}Analyst Consensus:{Colors.END} {Colors.WHITE}N/A{Colors.END}")
     
+    # Zacks Recommendation
+    zacks_rec = rec_data.get('zacks_recommendation')
+    zacks_rank = rec_data.get('zacks_rank')
+    if zacks_rec:
+        rec_lower = str(zacks_rec).lower()
+        if 'strong buy' in rec_lower or rec_lower == 'buy':
+            zacks_color = Colors.GREEN
+        elif 'strong sell' in rec_lower or rec_lower == 'sell':
+            zacks_color = Colors.RED
+        else:
+            zacks_color = Colors.YELLOW
+        rank_text = f" (Rank {zacks_rank})" if zacks_rank else ""
+        print(f"  {Colors.BOLD}Zacks Recommendation:{Colors.END} {zacks_color}{zacks_rec}{rank_text}{Colors.END}")
+    elif zacks_rank:
+        rank_labels = {1: "Strong Buy", 2: "Buy", 3: "Hold", 4: "Sell", 5: "Strong Sell"}
+        rank_label = rank_labels.get(zacks_rank, f"Rank {zacks_rank}")
+        zacks_color = Colors.GREEN if zacks_rank <= 2 else Colors.YELLOW if zacks_rank == 3 else Colors.RED
+        print(f"  {Colors.BOLD}Zacks Recommendation:{Colors.END} {zacks_color}{rank_label} (Rank {zacks_rank}){Colors.END}")
+    else:
+        print(f"  {Colors.BOLD}Zacks Recommendation:{Colors.END} {Colors.WHITE}N/A{Colors.END}")
+    
     # Risk Disclaimer
     print(f"\n{Colors.YELLOW}{Colors.BOLD}⚠ Disclaimer:{Colors.END} This recommendation is based on technical analysis and should not be the sole basis for investment decisions. Always conduct your own research and consider your risk tolerance.{Colors.END}")
+
+
+def display_zacks_recommendation(data):
+    """Display Zacks.com recommendation summary"""
+    zacks_data = data.get('zacks_data')
+    
+    print(f"\n{Colors.BOLD}{Colors.CYAN}{'='*80}{Colors.END}")
+    print(f"{Colors.BOLD}{Colors.CYAN}9. ZACKS.COM RECOMMENDATION{Colors.END}")
+    print(f"{Colors.BOLD}{Colors.CYAN}{'='*80}{Colors.END}")
+    
+    if not zacks_data:
+        print(f"\n{Colors.WHITE}Zacks.com recommendation data not available.{Colors.END}")
+        print(f"{Colors.WHITE}This may be due to:{Colors.END}")
+        print(f"{Colors.WHITE}  - Stock not found on Zacks.com{Colors.END}")
+        print(f"{Colors.WHITE}  - Website structure changes{Colors.END}")
+        print(f"{Colors.WHITE}  - Network connectivity issues{Colors.END}")
+        return
+    
+    recommendation = zacks_data.get('recommendation')
+    rank = zacks_data.get('rank')
+    style_scores = zacks_data.get('style_scores', {})
+    url = zacks_data.get('url', '')
+    
+    # Display recommendation
+    if recommendation:
+        # Color code the recommendation
+        rec_lower = recommendation.lower()
+        if 'strong buy' in rec_lower or rec_lower == 'buy':
+            rec_color = Colors.GREEN
+            rec_symbol = "↑"
+        elif 'strong sell' in rec_lower or rec_lower == 'sell':
+            rec_color = Colors.RED
+            rec_symbol = "↓"
+        else:
+            rec_color = Colors.YELLOW
+            rec_symbol = "→"
+        
+        print(f"\n{Colors.BOLD}Zacks Recommendation:{Colors.END} {rec_color}{rec_symbol} {recommendation}{Colors.END}")
+        
+        # Display rank if available
+        if rank:
+            rank_labels = {1: 'Strong Buy', 2: 'Buy', 3: 'Hold', 4: 'Sell', 5: 'Strong Sell'}
+            rank_label = rank_labels.get(rank, f'Rank {rank}')
+            rank_color = Colors.GREEN if rank <= 2 else Colors.RED if rank >= 4 else Colors.YELLOW
+            print(f"{Colors.BOLD}Zacks Rank:{Colors.END} {rank_color}{rank} ({rank_label}){Colors.END}")
+            print(f"{Colors.WHITE}Note: Zacks Rank 1 = Strong Buy, 2 = Buy, 3 = Hold, 4 = Sell, 5 = Strong Sell{Colors.END}")
+        
+        # Display style scores if available
+        if style_scores:
+            print(f"\n{Colors.BOLD}Style Scores:{Colors.END}")
+            
+            # Helper function to get color for grade
+            def get_grade_color(grade):
+                if isinstance(grade, str):
+                    grade_upper = grade.upper()
+                    if grade_upper == 'A':
+                        return Colors.GREEN
+                    elif grade_upper == 'B':
+                        return Colors.GREEN
+                    elif grade_upper == 'C':
+                        return Colors.YELLOW
+                    elif grade_upper == 'D':
+                        return Colors.YELLOW
+                    else:  # F
+                        return Colors.RED
+                else:  # numeric score
+                    return Colors.GREEN if grade >= 4 else Colors.YELLOW if grade >= 2 else Colors.RED
+            
+            if 'value' in style_scores or 'value_grade' in style_scores:
+                value_grade = style_scores.get('value_grade') or (style_scores.get('value') and ['F', 'D', 'C', 'B', 'A'][style_scores['value'] - 1] if style_scores.get('value') else None)
+                value_score = style_scores.get('value', 0)
+                if value_grade:
+                    value_color = get_grade_color(value_grade)
+                    print(f"  {Colors.BOLD}Value:{Colors.END} {value_color}{value_grade}{Colors.END}")
+                elif value_score:
+                    value_color = get_grade_color(value_score)
+                    print(f"  {Colors.BOLD}Value:{Colors.END} {value_color}{value_score}/5{Colors.END}")
+            
+            if 'growth' in style_scores or 'growth_grade' in style_scores:
+                growth_grade = style_scores.get('growth_grade') or (style_scores.get('growth') and ['F', 'D', 'C', 'B', 'A'][style_scores['growth'] - 1] if style_scores.get('growth') else None)
+                growth_score = style_scores.get('growth', 0)
+                if growth_grade:
+                    growth_color = get_grade_color(growth_grade)
+                    print(f"  {Colors.BOLD}Growth:{Colors.END} {growth_color}{growth_grade}{Colors.END}")
+                elif growth_score:
+                    growth_color = get_grade_color(growth_score)
+                    print(f"  {Colors.BOLD}Growth:{Colors.END} {growth_color}{growth_score}/5{Colors.END}")
+            
+            if 'momentum' in style_scores or 'momentum_grade' in style_scores:
+                momentum_grade = style_scores.get('momentum_grade') or (style_scores.get('momentum') and ['F', 'D', 'C', 'B', 'A'][style_scores['momentum'] - 1] if style_scores.get('momentum') else None)
+                momentum_score = style_scores.get('momentum', 0)
+                if momentum_grade:
+                    momentum_color = get_grade_color(momentum_grade)
+                    print(f"  {Colors.BOLD}Momentum:{Colors.END} {momentum_color}{momentum_grade}{Colors.END}")
+                elif momentum_score:
+                    momentum_color = get_grade_color(momentum_score)
+                    print(f"  {Colors.BOLD}Momentum:{Colors.END} {momentum_color}{momentum_score}/5{Colors.END}")
+            
+            if 'vgm' in style_scores or 'vgm_grade' in style_scores:
+                vgm_grade = style_scores.get('vgm_grade') or (style_scores.get('vgm') and ['F', 'D', 'C', 'B', 'A'][style_scores['vgm'] - 1] if style_scores.get('vgm') else None)
+                vgm_score = style_scores.get('vgm', 0)
+                if vgm_grade:
+                    vgm_color = get_grade_color(vgm_grade)
+                    print(f"  {Colors.BOLD}VGM Score:{Colors.END} {vgm_color}{vgm_grade}{Colors.END}")
+                elif vgm_score:
+                    vgm_color = get_grade_color(vgm_score)
+                    print(f"  {Colors.BOLD}VGM Score:{Colors.END} {vgm_color}{vgm_score}/5{Colors.END}")
+            
+            print(f"{Colors.WHITE}Note: Style Scores use letter grades (A=Best, F=Worst){Colors.END}")
+        
+        # Display source URL
+        if url:
+            print(f"\n{Colors.BOLD}Source:{Colors.END} {Colors.WHITE}{url}{Colors.END}")
+    else:
+        print(f"\n{Colors.WHITE}Recommendation data could not be extracted from Zacks.com{Colors.END}")
+        if url:
+            print(f"{Colors.WHITE}You can check manually at: {url}{Colors.END}")
+    
+    # Disclaimer
+    print(f"\n{Colors.YELLOW}{Colors.BOLD}Note:{Colors.END} Zacks.com data is scraped from their website and may not always be available or accurate. Always verify information from official sources.{Colors.END}")
 
 

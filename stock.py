@@ -23,6 +23,7 @@ from helpers import (
     display_analyst_ratings,
     display_price_action_trend,
     display_trading_recommendation,
+    display_zacks_recommendation,
     collect_all_data,
     export_to_excel,
     export_to_pdf
@@ -69,6 +70,7 @@ def main():
     display_analyst_ratings(data)
     display_price_action_trend(data)
     display_trading_recommendation(data)
+    display_zacks_recommendation(data)
     
     # Export to file if requested
     if output_path:
