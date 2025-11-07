@@ -21,6 +21,8 @@ from helpers import (
     display_macro_sector_data,
     display_earnings_trend,
     display_analyst_ratings,
+    display_price_action_trend,
+    display_trading_recommendation,
     collect_all_data,
     export_to_excel,
     export_to_pdf
@@ -43,6 +45,11 @@ def main():
     print(f"{Colors.BOLD}{Colors.BLUE}{'='*80}{Colors.END}")
     print(f"{Colors.WHITE}Analysis Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}{Colors.END}")
     
+    # Disclaimer notice
+    print(f"\n{Colors.YELLOW}{Colors.BOLD}⚠ DISCLAIMER:{Colors.END} {Colors.WHITE}This tool is for informational and educational purposes only.")
+    print(f"{Colors.WHITE}It does NOT provide financial, investment, or trading advice.")
+    print(f"{Colors.WHITE}Use at your own risk. See DISCLAIMER.md and LICENSE for details.{Colors.END}\n")
+    
     # Fetch data
     print(f"\n{Colors.YELLOW}Fetching data for {ticker}...{Colors.END}")
     data = get_financial_data(ticker)
@@ -60,6 +67,8 @@ def main():
     display_macro_sector_data(data)
     display_earnings_trend(data)
     display_analyst_ratings(data)
+    display_price_action_trend(data)
+    display_trading_recommendation(data)
     
     # Export to file if requested
     if output_path:
@@ -95,6 +104,11 @@ def main():
     print(f"{Colors.WHITE}  - Qualitative analysis (business model, competitive advantage, management){Colors.END}")
     print(f"{Colors.WHITE}  - External macroeconomic data APIs (interest rates, inflation){Colors.END}")
     print(f"{Colors.WHITE}  - Industry-specific research (market share, regulations){Colors.END}")
+    print()
+    
+    # Final disclaimer reminder
+    print(f"{Colors.YELLOW}{Colors.BOLD}⚠ REMINDER:{Colors.END} {Colors.WHITE}This analysis is for informational purposes only.")
+    print(f"{Colors.WHITE}Always do your own research and consult with qualified financial advisors before making investment decisions.{Colors.END}")
     print()
 
 

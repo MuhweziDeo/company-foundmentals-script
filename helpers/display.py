@@ -15,7 +15,10 @@ from .calculators import (
     calculate_rsi,
     get_rsi_signal,
     get_earnings_trend,
-    get_analyst_ratings
+    get_analyst_ratings,
+    analyze_price_action_trend,
+    identify_swing_points,
+    generate_trading_recommendation
 )
 from .data_fetcher import get_macro_data
 
@@ -523,5 +526,243 @@ def display_valuation_data(data):
     # EV/EBITDA
     ev_ebitda = info.get('enterpriseToEbitda')
     print(f"{Colors.BOLD}EV/EBITDA:{Colors.END} {Colors.YELLOW}{format_ratio(ev_ebitda)}{Colors.END}")
+
+
+def display_price_action_trend(data):
+    """Display price action trend analysis and swing structures on 1-day timeframe"""
+    history = data.get('history')
+    
+    print(f"\n{Colors.BOLD}{Colors.CYAN}{'='*80}{Colors.END}")
+    print(f"{Colors.BOLD}{Colors.CYAN}7. PRICE ACTION TREND & SWING STRUCTURES (1D Timeframe){Colors.END}")
+    print(f"{Colors.BOLD}{Colors.CYAN}{'='*80}{Colors.END}")
+    
+    if history is None or history.empty:
+        print(f"{Colors.WHITE}Price action data not available{Colors.END}")
+        return
+    
+    # Analyze price action trend
+    trend_data = analyze_price_action_trend(history)
+    
+    # Display trend
+    trend = trend_data['trend']
+    trend_strength = trend_data['trend_strength']
+    description = trend_data['description']
+    
+    # Color code the trend
+    if trend == 'UPTREND':
+        trend_color = Colors.GREEN
+        trend_symbol = "↑"
+    elif trend == 'DOWNTREND':
+        trend_color = Colors.RED
+        trend_symbol = "↓"
+    elif trend == 'SIDEWAYS':
+        trend_color = Colors.YELLOW
+        trend_symbol = "→"
+    else:
+        trend_color = Colors.WHITE
+        trend_symbol = "?"
+    
+    print(f"\n{Colors.BOLD}Price Action Trend:{Colors.END} {trend_color}{trend_symbol} {trend}{Colors.END}")
+    if trend_strength is not None:
+        print(f"{Colors.BOLD}Trend Strength:{Colors.END} {trend_color}{trend_strength:.1%}{Colors.END}")
+    print(f"{Colors.BOLD}Analysis:{Colors.END} {Colors.WHITE}{description}{Colors.END}")
+    
+    # Display swing structures
+    swing_highs = trend_data['swing_highs']
+    swing_lows = trend_data['swing_lows']
+    
+    # Display current swing high and low prices prominently
+    print(f"\n{Colors.BOLD}{'='*80}{Colors.END}")
+    print(f"{Colors.BOLD}Current Swing Points:{Colors.END}")
+    
+    if swing_highs and len(swing_highs) > 0:
+        current_swing_high = swing_highs[0]
+        current_high_price = format_price(current_swing_high['price'])
+        current_high_date = current_swing_high['date'][:10] if len(current_swing_high['date']) > 10 else current_swing_high['date']
+        print(f"{Colors.BOLD}Current Swing High:{Colors.END} {Colors.GREEN}{current_high_price}{Colors.END} {Colors.WHITE}(on {current_high_date}){Colors.END}")
+    else:
+        print(f"{Colors.BOLD}Current Swing High:{Colors.END} {Colors.WHITE}N/A (insufficient data){Colors.END}")
+    
+    if swing_lows and len(swing_lows) > 0:
+        current_swing_low = swing_lows[0]
+        current_low_price = format_price(current_swing_low['price'])
+        current_low_date = current_swing_low['date'][:10] if len(current_swing_low['date']) > 10 else current_swing_low['date']
+        print(f"{Colors.BOLD}Current Swing Low:{Colors.END} {Colors.RED}{current_low_price}{Colors.END} {Colors.WHITE}(on {current_low_date}){Colors.END}")
+    else:
+        print(f"{Colors.BOLD}Current Swing Low:{Colors.END} {Colors.WHITE}N/A (insufficient data){Colors.END}")
+    
+    print(f"{Colors.BOLD}{'='*80}{Colors.END}")
+    
+    print(f"\n{Colors.BOLD}Swing Structures (1-Day Timeframe):{Colors.END}")
+    
+    # Display swing highs
+    if swing_highs:
+        print(f"\n{Colors.BOLD}Recent Swing Highs:{Colors.END}")
+        print(f"{Colors.WHITE}{'Date':<15} {'Price':<15} {'Status'}{Colors.END}")
+        print(f"{Colors.WHITE}{'-' * 50}{Colors.END}")
+        
+        for i, swing in enumerate(swing_highs[:5]):  # Show last 5
+            date_str = swing['date'][:10] if len(swing['date']) > 10 else swing['date']
+            price = format_price(swing['price'])
+            
+            # Compare with previous swing high to show if higher/lower
+            status = ""
+            if i < len(swing_highs) - 1:
+                prev_price = swing_highs[i + 1]['price']
+                if swing['price'] > prev_price:
+                    status = f"{Colors.GREEN}↑ Higher{Colors.END}"
+                elif swing['price'] < prev_price:
+                    status = f"{Colors.RED}↓ Lower{Colors.END}"
+                else:
+                    status = f"{Colors.YELLOW}→ Equal{Colors.END}"
+            else:
+                status = f"{Colors.WHITE}N/A{Colors.END}"
+            
+            print(f"{Colors.WHITE}{date_str:<15}{Colors.END} {Colors.GREEN}{price:<15}{Colors.END} {status}")
+    else:
+        print(f"\n{Colors.BOLD}Recent Swing Highs:{Colors.END} {Colors.WHITE}N/A (insufficient data){Colors.END}")
+    
+    # Display swing lows
+    if swing_lows:
+        print(f"\n{Colors.BOLD}Recent Swing Lows:{Colors.END}")
+        print(f"{Colors.WHITE}{'Date':<15} {'Price':<15} {'Status'}{Colors.END}")
+        print(f"{Colors.WHITE}{'-' * 50}{Colors.END}")
+        
+        for i, swing in enumerate(swing_lows[:5]):  # Show last 5
+            date_str = swing['date'][:10] if len(swing['date']) > 10 else swing['date']
+            price = format_price(swing['price'])
+            
+            # Compare with previous swing low to show if higher/lower
+            status = ""
+            if i < len(swing_lows) - 1:
+                prev_price = swing_lows[i + 1]['price']
+                if swing['price'] > prev_price:
+                    status = f"{Colors.GREEN}↑ Higher{Colors.END}"
+                elif swing['price'] < prev_price:
+                    status = f"{Colors.RED}↓ Lower{Colors.END}"
+                else:
+                    status = f"{Colors.YELLOW}→ Equal{Colors.END}"
+            else:
+                status = f"{Colors.WHITE}N/A{Colors.END}"
+            
+            print(f"{Colors.WHITE}{date_str:<15}{Colors.END} {Colors.RED}{price:<15}{Colors.END} {status}")
+    else:
+        print(f"\n{Colors.BOLD}Recent Swing Lows:{Colors.END} {Colors.WHITE}N/A (insufficient data){Colors.END}")
+    
+    # Summary of swing structure pattern
+    if swing_highs and swing_lows and len(swing_highs) >= 2 and len(swing_lows) >= 2:
+        print(f"\n{Colors.BOLD}Swing Structure Pattern:{Colors.END}")
+        
+        # Check if we have higher highs
+        has_higher_highs = len(swing_highs) >= 2 and swing_highs[0]['price'] > swing_highs[1]['price']
+        has_lower_highs = len(swing_highs) >= 2 and swing_highs[0]['price'] < swing_highs[1]['price']
+        has_higher_lows = len(swing_lows) >= 2 and swing_lows[0]['price'] > swing_lows[1]['price']
+        has_lower_lows = len(swing_lows) >= 2 and swing_lows[0]['price'] < swing_lows[1]['price']
+        
+        if has_higher_highs and has_higher_lows:
+            print(f"  {Colors.GREEN}✓ Higher Highs and Higher Lows (Classic Uptrend){Colors.END}")
+        elif has_lower_highs and has_lower_lows:
+            print(f"  {Colors.RED}✓ Lower Highs and Lower Lows (Classic Downtrend){Colors.END}")
+        elif has_higher_highs and has_lower_lows:
+            print(f"  {Colors.YELLOW}⚠ Higher Highs but Lower Lows (Potential Reversal){Colors.END}")
+        elif has_lower_highs and has_higher_lows:
+            print(f"  {Colors.YELLOW}⚠ Lower Highs but Higher Lows (Potential Reversal){Colors.END}")
+        else:
+            print(f"  {Colors.WHITE}→ Mixed pattern (Consolidation){Colors.END}")
+
+
+def display_trading_recommendation(data):
+    """Display comprehensive buy/sell/hold recommendation based on multiple indicators"""
+    print(f"\n{Colors.BOLD}{Colors.CYAN}{'='*80}{Colors.END}")
+    print(f"{Colors.BOLD}{Colors.CYAN}8. TRADING RECOMMENDATION{Colors.END}")
+    print(f"{Colors.BOLD}{Colors.CYAN}{'='*80}{Colors.END}")
+    
+    # Generate recommendation
+    rec_data = generate_trading_recommendation(data)
+    
+    recommendation = rec_data['recommendation']
+    recommendation_color = rec_data['recommendation_color']
+    recommendation_symbol = rec_data['recommendation_symbol']
+    total_score = rec_data['total_score']
+    scores = rec_data['scores']
+    reasons = rec_data['reasons']
+    summary_reason = rec_data['summary_reason']
+    
+    # Display the main recommendation prominently
+    print(f"\n{Colors.BOLD}{'='*80}{Colors.END}")
+    print(f"{Colors.BOLD}RECOMMENDATION: {recommendation_color}{recommendation_symbol} {recommendation}{Colors.END}")
+    print(f"{Colors.BOLD}{'='*80}{Colors.END}")
+    
+    # Display summary reason
+    print(f"\n{Colors.BOLD}Summary:{Colors.END} {Colors.WHITE}{summary_reason}{Colors.END}")
+    
+    # Display score breakdown
+    print(f"\n{Colors.BOLD}Indicator Scores:{Colors.END}")
+    print(f"{Colors.WHITE}{'-' * 50}{Colors.END}")
+    
+    # Price Action Score
+    pa_score = scores['price_action']
+    pa_color = Colors.GREEN if pa_score > 0 else Colors.RED if pa_score < 0 else Colors.YELLOW
+    pa_sign = "+" if pa_score > 0 else ""
+    print(f"{Colors.BOLD}Price Action Trend:{Colors.END} {pa_color}{pa_sign}{pa_score:+d}{Colors.END}")
+    
+    # Analyst Rating Score
+    ar_score = scores['analyst_rating']
+    ar_color = Colors.GREEN if ar_score > 0 else Colors.RED if ar_score < 0 else Colors.YELLOW
+    ar_sign = "+" if ar_score > 0 else ""
+    print(f"{Colors.BOLD}Analyst Ratings:{Colors.END} {ar_color}{ar_sign}{ar_score:+d}{Colors.END}")
+    
+    # RSI Score
+    rsi_score = scores['rsi']
+    rsi_color = Colors.GREEN if rsi_score > 0 else Colors.RED if rsi_score < 0 else Colors.YELLOW
+    rsi_sign = "+" if rsi_score > 0 else ""
+    print(f"{Colors.BOLD}RSI Indicator:{Colors.END} {rsi_color}{rsi_sign}{rsi_score:+d}{Colors.END}")
+    
+    print(f"{Colors.WHITE}{'-' * 50}{Colors.END}")
+    total_color = Colors.GREEN if total_score > 0 else Colors.RED if total_score < 0 else Colors.YELLOW
+    total_sign = "+" if total_score > 0 else ""
+    print(f"{Colors.BOLD}Total Score:{Colors.END} {total_color}{total_sign}{total_score:+d}{Colors.END}")
+    
+    # Display detailed reasons
+    if reasons:
+        print(f"\n{Colors.BOLD}Detailed Analysis:{Colors.END}")
+        for i, reason in enumerate(reasons, 1):
+            print(f"  {Colors.WHITE}{i}. {reason}{Colors.END}")
+    
+    # Display individual indicator values for reference
+    print(f"\n{Colors.BOLD}Indicator Values:{Colors.END}")
+    
+    # RSI Value
+    rsi_value = rec_data.get('rsi_value')
+    if rsi_value is not None:
+        rsi_signal, rsi_signal_color = get_rsi_signal(rsi_value)
+        rsi_display_color = Colors.RED if rsi_value >= 70 else Colors.GREEN if rsi_value <= 30 else Colors.YELLOW
+        print(f"  {Colors.BOLD}RSI:{Colors.END} {rsi_display_color}{rsi_value:.1f}{Colors.END} {rsi_signal_color}({rsi_signal}){Colors.END}")
+    else:
+        print(f"  {Colors.BOLD}RSI:{Colors.END} {Colors.WHITE}N/A{Colors.END}")
+    
+    # Price Action Trend
+    price_action_trend = rec_data.get('price_action_trend', 'UNKNOWN')
+    if price_action_trend != 'UNKNOWN':
+        trend_color = Colors.GREEN if price_action_trend == 'UPTREND' else Colors.RED if price_action_trend == 'DOWNTREND' else Colors.YELLOW
+        print(f"  {Colors.BOLD}Price Action Trend:{Colors.END} {trend_color}{price_action_trend}{Colors.END}")
+    else:
+        print(f"  {Colors.BOLD}Price Action Trend:{Colors.END} {Colors.WHITE}N/A{Colors.END}")
+    
+    # Analyst Recommendation
+    analyst_rec = rec_data.get('analyst_recommendation')
+    if analyst_rec:
+        if isinstance(analyst_rec, (int, float)):
+            rec_labels = {1: "Strong Buy", 2: "Buy", 3: "Hold", 4: "Underperform", 5: "Sell"}
+            rec_label = rec_labels.get(int(analyst_rec), f"{analyst_rec:.1f}")
+            rec_color = Colors.GREEN if analyst_rec <= 2 else Colors.YELLOW if analyst_rec <= 3 else Colors.RED
+            print(f"  {Colors.BOLD}Analyst Consensus:{Colors.END} {rec_color}{rec_label}{Colors.END}")
+        else:
+            print(f"  {Colors.BOLD}Analyst Consensus:{Colors.END} {Colors.YELLOW}{analyst_rec}{Colors.END}")
+    else:
+        print(f"  {Colors.BOLD}Analyst Consensus:{Colors.END} {Colors.WHITE}N/A{Colors.END}")
+    
+    # Risk Disclaimer
+    print(f"\n{Colors.YELLOW}{Colors.BOLD}⚠ Disclaimer:{Colors.END} This recommendation is based on technical analysis and should not be the sole basis for investment decisions. Always conduct your own research and consider your risk tolerance.{Colors.END}")
 
 

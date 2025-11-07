@@ -43,6 +43,29 @@ A Python command-line tool that collects comprehensive company fundamental data 
 - Overall trend direction (increasing/decreasing/stable)
 - Last 8 periods displayed
 
+### 📊 Analyst Ratings & Price Targets
+
+- Average, High, and Low price targets
+- Upside/Downside percentage vs current price
+- Average recommendation (Strong Buy, Buy, Hold, Underperform, Sell)
+- Recommendation breakdown by category
+- Recent analyst recommendations with firm names and dates
+
+### 📉 Price Action Trend & Swing Structures (1D Timeframe)
+
+- **Trend Analysis**: Determines uptrend, downtrend, or sideways based on swing structure
+- **Current Swing High/Low**: Most recent swing points with prices and dates
+- **Swing Structure Pattern**: Identifies classic patterns (higher highs/lows, lower highs/lows, potential reversals)
+- **Recent Swing History**: Last 5 swing highs and lows with comparison to previous swings
+
+### 🎯 Trading Recommendation
+
+- **Comprehensive Analysis**: Combines price action, analyst ratings, and RSI indicators
+- **Buy/Sell/Hold Signal**: Clear recommendation with strength indicator
+- **Score Breakdown**: Shows contribution from each indicator (Price Action, Analyst Ratings, RSI)
+- **Detailed Reasoning**: Explains why each indicator contributes to the recommendation
+- **Risk Assessment**: Includes disclaimer about using technical analysis for investment decisions
+
 ### 🌍 Macroeconomic & Sector Metrics
 
 - **Interest Rate** (Federal Funds Rate) - From FRED API
@@ -263,17 +286,50 @@ stock-finder/
 ├── stock.py          # Main application script
 ├── run.sh            # Automated setup and execution script
 ├── requirements.txt   # Python dependencies
-└── README.md         # This file
+├── README.md         # This file
+├── LICENSE           # MIT License with liability disclaimers
+├── DISCLAIMER.md     # Comprehensive disclaimer and liability notice
+└── helpers/          # Helper modules
+    ├── __init__.py
+    ├── calculators.py    # Technical analysis calculations
+    ├── constants.py      # Constants and configuration
+    ├── data_fetcher.py   # Data fetching functions
+    ├── display.py        # Display formatting functions
+    ├── export.py         # Export to Excel/PDF functions
+    └── formatters.py     # Number/price formatting utilities
+```
+
+## Export Options
+
+The tool supports exporting analysis data to Excel (.xlsx) or PDF (.pdf) formats:
+
+```bash
+python stock.py AAPL -o analysis.xlsx
+python stock.py AAPL -o report.pdf
 ```
 
 ## License
 
-This project is open source and available for personal and educational use.
+This project is licensed under the MIT License with additional liability disclaimers. See [LICENSE](LICENSE) file for details.
+
+## Disclaimer & Liability
+
+**IMPORTANT: USE AT YOUR OWN RISK**
+
+This tool is provided for informational and educational purposes only. It does NOT provide financial, investment, or trading advice. See [DISCLAIMER.md](DISCLAIMER.md) for complete disclaimer and liability information.
+
+**Key Points:**
+- ⚠️ **Not Financial Advice**: All recommendations and analysis are for informational purposes only
+- ⚠️ **Use at Your Own Risk**: You are solely responsible for any investment decisions
+- ⚠️ **No Warranty**: The software is provided "as is" without any warranties
+- ⚠️ **No Liability**: The authors and contributors are not liable for any losses or damages
+- ⚠️ **Do Your Own Research**: Always consult with qualified financial advisors before making investment decisions
 
 ## Contributing
 
 Feel free to submit issues, fork the repository, and create pull requests for any improvements.
 
-## Disclaimer
+## Acknowledgments
 
-This tool is for informational purposes only. It does not provide financial advice. Always do your own research and consult with a financial advisor before making investment decisions.
+- Data provided by Yahoo Finance (via yfinance)
+- Macroeconomic data from FRED (Federal Reserve Economic Data)
