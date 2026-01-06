@@ -195,7 +195,8 @@ def collect_all_data(data, ticker):
         },
         'macro_data': data.get('macro_data', {}),
         'earnings_trend': earnings_trend,
-        'analyst_data': analyst_data
+        'analyst_data': analyst_data,
+        'zacks_data': data.get('zacks_data', {})
     }
 
 
@@ -492,6 +493,96 @@ def export_to_excel(data_dict, output_path):
                     ws[f'C{row}'] = analyst['date']
                     row += 1
         
+        row += 1
+        
+        # Zacks.com Recommendation
+        zacks_data = data_dict.get('zacks_data', {})
+        if zacks_data and zacks_data.get('recommendation'):
+            ws[f'A{row}'] = "ZACKS.COM RECOMMENDATION"
+            ws[f'A{row}'].font = Font(bold=True, size=12)
+            ws[f'A{row}'].fill = PatternFill(start_color="00CCFFFF", end_color="00CCFFFF", fill_type="solid")
+            row += 1
+            
+            # Recommendation
+            ws[f'A{row}'] = "Zacks Recommendation"
+            ws[f'B{row}'] = zacks_data.get('recommendation', 'N/A')
+            row += 1
+            
+            # Rank
+            if zacks_data.get('rank'):
+                rank = zacks_data['rank']
+                rank_labels = {1: 'Strong Buy', 2: 'Buy', 3: 'Hold', 4: 'Sell', 5: 'Strong Sell'}
+                rank_label = rank_labels.get(rank, f'Rank {rank}')
+                ws[f'A{row}'] = "Zacks Rank"
+                ws[f'B{row}'] = f"{rank} ({rank_label})"
+                row += 1
+            
+            # Industry Rank
+            if zacks_data.get('industry_rank'):
+                industry_rank = zacks_data['industry_rank']
+                total_industries = zacks_data.get('total_industries', 256)
+                percentile_text = zacks_data.get('percentile_text')
+                
+                # Use Zacks' percentile text if available, otherwise calculate
+                if percentile_text:
+                    status = percentile_text
+                else:
+                    # Fallback: Calculate percentile
+                    percentile = (industry_rank / total_industries) * 100
+                    if percentile <= 25:
+                        status = "Top 25%"
+                    elif percentile <= 50:
+                        status = "Top 50%"
+                    elif percentile <= 75:
+                        status = "Bottom 50%"
+                    else:
+                        status = "Bottom 25%"
+                
+                ws[f'A{row}'] = "Zacks Industry Rank"
+                ws[f'B{row}'] = f"{industry_rank} out of {total_industries} ({status})"
+                row += 1
+                
+                # Industry Name
+                if zacks_data.get('industry_name'):
+                    ws[f'A{row}'] = "Industry"
+                    ws[f'B{row}'] = zacks_data['industry_name']
+                    row += 1
+            
+            # Style Scores
+            style_scores = zacks_data.get('style_scores', {})
+            if style_scores:
+                row += 1
+                ws[f'A{row}'] = "Style Scores"
+                ws[f'A{row}'].font = Font(bold=True)
+                row += 1
+                
+                if 'value_grade' in style_scores:
+                    ws[f'A{row}'] = "  Value"
+                    ws[f'B{row}'] = style_scores['value_grade']
+                    row += 1
+                
+                if 'growth_grade' in style_scores:
+                    ws[f'A{row}'] = "  Growth"
+                    ws[f'B{row}'] = style_scores['growth_grade']
+                    row += 1
+                
+                if 'momentum_grade' in style_scores:
+                    ws[f'A{row}'] = "  Momentum"
+                    ws[f'B{row}'] = style_scores['momentum_grade']
+                    row += 1
+                
+                if 'vgm_grade' in style_scores:
+                    ws[f'A{row}'] = "  VGM Score"
+                    ws[f'B{row}'] = style_scores['vgm_grade']
+                    row += 1
+            
+            # Source URL
+            if zacks_data.get('url'):
+                row += 1
+                ws[f'A{row}'] = "Source"
+                ws[f'B{row}'] = zacks_data['url']
+                row += 1
+        
         # Adjust column widths
         ws.column_dimensions['A'].width = 35
         ws.column_dimensions['B'].width = 25
@@ -787,6 +878,86 @@ def export_to_pdf(data_dict, output_path):
                     ('GRID', (0, 0), (-1, -1), 1, colors.black),
                 ]))
                 story.append(analyst_list_table)
+            
+            story.append(Spacer(1, 0.2*inch))
+        
+        # Zacks.com Recommendation
+        zacks_data = data_dict.get('zacks_data', {})
+        if zacks_data and zacks_data.get('recommendation'):
+            story.append(Paragraph("<b>ZACKS.COM RECOMMENDATION</b>", styles['Heading2']))
+            story.append(Spacer(1, 0.1*inch))
+            
+            zacks_table_data = [['Metric', 'Value']]
+            
+            # Recommendation
+            zacks_table_data.append(['Zacks Recommendation', zacks_data.get('recommendation', 'N/A')])
+            
+            # Rank
+            if zacks_data.get('rank'):
+                rank = zacks_data['rank']
+                rank_labels = {1: 'Strong Buy', 2: 'Buy', 3: 'Hold', 4: 'Sell', 5: 'Strong Sell'}
+                rank_label = rank_labels.get(rank, f'Rank {rank}')
+                zacks_table_data.append(['Zacks Rank', f"{rank} ({rank_label})"])
+            
+            # Industry Rank
+            if zacks_data.get('industry_rank'):
+                industry_rank = zacks_data['industry_rank']
+                total_industries = zacks_data.get('total_industries', 256)
+                percentile_text = zacks_data.get('percentile_text')
+                
+                # Use Zacks' percentile text if available, otherwise calculate
+                if percentile_text:
+                    status = percentile_text
+                else:
+                    # Fallback: Calculate percentile
+                    percentile = (industry_rank / total_industries) * 100
+                    if percentile <= 25:
+                        status = "Top 25%"
+                    elif percentile <= 50:
+                        status = "Top 50%"
+                    elif percentile <= 75:
+                        status = "Bottom 50%"
+                    else:
+                        status = "Bottom 25%"
+                
+                zacks_table_data.append(['Zacks Industry Rank', f"{industry_rank} out of {total_industries} ({status})"])
+                
+                # Industry Name
+                if zacks_data.get('industry_name'):
+                    zacks_table_data.append(['Industry', zacks_data['industry_name']])
+            
+            # Style Scores
+            style_scores = zacks_data.get('style_scores', {})
+            if style_scores:
+                if 'value_grade' in style_scores:
+                    zacks_table_data.append(['Value Score', style_scores['value_grade']])
+                
+                if 'growth_grade' in style_scores:
+                    zacks_table_data.append(['Growth Score', style_scores['growth_grade']])
+                
+                if 'momentum_grade' in style_scores:
+                    zacks_table_data.append(['Momentum Score', style_scores['momentum_grade']])
+                
+                if 'vgm_grade' in style_scores:
+                    zacks_table_data.append(['VGM Score', style_scores['vgm_grade']])
+            
+            zacks_table = Table(zacks_table_data, colWidths=[3*inch, 3*inch])
+            zacks_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#CCFFFF')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 10),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ]))
+            story.append(zacks_table)
+            
+            # Source URL
+            if zacks_data.get('url'):
+                story.append(Spacer(1, 0.1*inch))
+                story.append(Paragraph(f"<b>Source:</b> {zacks_data['url']}", styles['Normal']))
             
             story.append(Spacer(1, 0.2*inch))
         

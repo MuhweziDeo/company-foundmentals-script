@@ -76,6 +76,21 @@ A Python command-line tool that collects comprehensive company fundamental data 
 - Earnings Growth (Industry Trend Proxy)
 - Beta (Market Correlation)
 
+### 📊 Zacks.com Recommendation
+
+- **Zacks Rank** - Stock rating from 1 (Strong Buy) to 5 (Strong Sell)
+- **Zacks Industry Rank** - Industry percentile ranking (1-256, where 1 is best)
+  - Top 25% (Rank 1-64): Strong industry performance
+  - Top 50% (Rank 65-128): Above-average industry performance
+  - Bottom 50% (Rank 129-192): Below-average industry performance
+  - Bottom 25% (Rank 193-256): Weak industry performance
+- **Industry Name** - The specific industry classification
+- **Style Scores** - Letter grades (A-F) for:
+  - Value: Valuation metrics
+  - Growth: Growth potential
+  - Momentum: Price momentum
+  - VGM: Combined Value, Growth, and Momentum score
+
 ## Installation
 
 ### Prerequisites
