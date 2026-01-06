@@ -68,3 +68,86 @@ def format_price(value):
         return str(value)
 
 
+def evaluate_pe_ratio(value):
+    """Evaluate P/E ratio and return status and expected range"""
+    if value is None:
+        return None, None, None
+    try:
+        val = float(value)
+        if val < 20:
+            status = "Good"
+            color = Colors.GREEN
+        elif val < 30:
+            status = "Moderate"
+            color = Colors.YELLOW
+        else:
+            status = "High"
+            color = Colors.RED
+        expected_range = "Typically < 20 (good), 20-30 (moderate), > 30 (high, varies by industry)"
+        return status, color, expected_range
+    except:
+        return None, None, None
+
+
+def evaluate_pb_ratio(value):
+    """Evaluate P/B ratio and return status and expected range"""
+    if value is None:
+        return None, None, None
+    try:
+        val = float(value)
+        if val < 3:
+            status = "Good"
+            color = Colors.GREEN
+        elif val < 5:
+            status = "Moderate"
+            color = Colors.YELLOW
+        else:
+            status = "High"
+            color = Colors.RED
+        expected_range = "Typically < 3 (good), 3-5 (moderate), > 5 (high)"
+        return status, color, expected_range
+    except:
+        return None, None, None
+
+
+def evaluate_ps_ratio(value):
+    """Evaluate P/S ratio and return status and expected range"""
+    if value is None:
+        return None, None, None
+    try:
+        val = float(value)
+        if val < 3:
+            status = "Good"
+            color = Colors.GREEN
+        elif val < 5:
+            status = "Moderate"
+            color = Colors.YELLOW
+        else:
+            status = "High"
+            color = Colors.RED
+        expected_range = "Typically < 3 (good), 3-5 (moderate), > 5 (high)"
+        return status, color, expected_range
+    except:
+        return None, None, None
+
+
+def evaluate_ev_ebitda(value):
+    """Evaluate EV/EBITDA ratio and return status and expected range"""
+    if value is None:
+        return None, None, None
+    try:
+        val = float(value)
+        if val < 10:
+            status = "Good"
+            color = Colors.GREEN
+        elif val < 15:
+            status = "Moderate"
+            color = Colors.YELLOW
+        else:
+            status = "High"
+            color = Colors.RED
+        expected_range = "Typically < 10 (good), 10-15 (moderate), > 15 (high)"
+        return status, color, expected_range
+    except:
+        return None, None, None
+

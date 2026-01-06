@@ -9,7 +9,11 @@ from .formatters import (
     format_percentage,
     format_percentage_colored,
     format_ratio,
-    format_price
+    format_price,
+    evaluate_pe_ratio,
+    evaluate_pb_ratio,
+    evaluate_ps_ratio,
+    evaluate_ev_ebitda
 )
 from .calculators import (
     calculate_rsi,
@@ -513,19 +517,43 @@ def display_valuation_data(data):
     
     # P/E Ratio
     pe_ratio = info.get('trailingPE') or info.get('forwardPE')
-    print(f"{Colors.BOLD}P/E (Price-to-Earnings):{Colors.END} {Colors.YELLOW}{format_ratio(pe_ratio)}{Colors.END}")
+    pe_status, pe_color, pe_range = evaluate_pe_ratio(pe_ratio)
+    print(f"{Colors.BOLD}P/E (Price-to-Earnings):{Colors.END} {Colors.YELLOW}{format_ratio(pe_ratio)}{Colors.END}", end="")
+    if pe_status:
+        print(f" {pe_color}({pe_status}){Colors.END}")
+        print(f"  {Colors.WHITE}Expected Range: {pe_range}{Colors.END}")
+    else:
+        print()
     
     # P/B Ratio
     pb_ratio = info.get('priceToBook')
-    print(f"{Colors.BOLD}P/B (Price-to-Book):{Colors.END} {Colors.YELLOW}{format_ratio(pb_ratio)}{Colors.END}")
+    pb_status, pb_color, pb_range = evaluate_pb_ratio(pb_ratio)
+    print(f"{Colors.BOLD}P/B (Price-to-Book):{Colors.END} {Colors.YELLOW}{format_ratio(pb_ratio)}{Colors.END}", end="")
+    if pb_status:
+        print(f" {pb_color}({pb_status}){Colors.END}")
+        print(f"  {Colors.WHITE}Expected Range: {pb_range}{Colors.END}")
+    else:
+        print()
     
     # P/S Ratio
     ps_ratio = info.get('priceToSalesTrailing12Months')
-    print(f"{Colors.BOLD}P/S (Price-to-Sales):{Colors.END} {Colors.YELLOW}{format_ratio(ps_ratio)}{Colors.END}")
+    ps_status, ps_color, ps_range = evaluate_ps_ratio(ps_ratio)
+    print(f"{Colors.BOLD}P/S (Price-to-Sales):{Colors.END} {Colors.YELLOW}{format_ratio(ps_ratio)}{Colors.END}", end="")
+    if ps_status:
+        print(f" {ps_color}({ps_status}){Colors.END}")
+        print(f"  {Colors.WHITE}Expected Range: {ps_range}{Colors.END}")
+    else:
+        print()
     
     # EV/EBITDA
     ev_ebitda = info.get('enterpriseToEbitda')
-    print(f"{Colors.BOLD}EV/EBITDA:{Colors.END} {Colors.YELLOW}{format_ratio(ev_ebitda)}{Colors.END}")
+    ev_status, ev_color, ev_range = evaluate_ev_ebitda(ev_ebitda)
+    print(f"{Colors.BOLD}EV/EBITDA:{Colors.END} {Colors.YELLOW}{format_ratio(ev_ebitda)}{Colors.END}", end="")
+    if ev_status:
+        print(f" {ev_color}({ev_status}){Colors.END}")
+        print(f"  {Colors.WHITE}Expected Range: {ev_range}{Colors.END}")
+    else:
+        print()
 
 
 def display_price_action_trend(data):
@@ -845,6 +873,49 @@ def display_zacks_recommendation(data):
             rank_color = Colors.GREEN if rank <= 2 else Colors.RED if rank >= 4 else Colors.YELLOW
             print(f"{Colors.BOLD}Zacks Rank:{Colors.END} {rank_color}{rank} ({rank_label}){Colors.END}")
             print(f"{Colors.WHITE}Note: Zacks Rank 1 = Strong Buy, 2 = Buy, 3 = Hold, 4 = Sell, 5 = Strong Sell{Colors.END}")
+        
+        # Display industry rank if available
+        industry_rank = zacks_data.get('industry_rank')
+        industry_name = zacks_data.get('industry_name')
+        total_industries = zacks_data.get('total_industries', 256)  # Default to 256 if not specified
+        percentile_text = zacks_data.get('percentile_text')  # e.g., "Bottom 6%", "Top 10%"
+        
+        if industry_rank:
+            # Use Zacks' percentile text if available, otherwise calculate it
+            if percentile_text:
+                # Use the exact percentile from Zacks
+                status_text = percentile_text
+                # Color code based on the position text
+                if 'top' in percentile_text.lower():
+                    industry_color = Colors.GREEN
+                elif 'bottom' in percentile_text.lower():
+                    industry_color = Colors.RED
+                else:
+                    industry_color = Colors.YELLOW
+            else:
+                # Fallback: Calculate percentile ourselves
+                percentile = (industry_rank / total_industries) * 100
+                
+                if percentile <= 25:
+                    industry_color = Colors.GREEN
+                    status_text = "Top 25%"
+                elif percentile <= 50:
+                    industry_color = Colors.YELLOW
+                    status_text = "Top 50%"
+                elif percentile <= 75:
+                    industry_color = Colors.YELLOW
+                    status_text = "Bottom 50%"
+                else:
+                    industry_color = Colors.RED
+                    status_text = "Bottom 25%"
+            
+            industry_display = f"{industry_rank} out of {total_industries} ({status_text})"
+            print(f"\n{Colors.BOLD}Zacks Industry Rank:{Colors.END} {industry_color}{industry_display}{Colors.END}")
+            
+            if industry_name:
+                print(f"{Colors.BOLD}Industry:{Colors.END} {Colors.CYAN}{industry_name}{Colors.END}")
+            
+            print(f"{Colors.WHITE}Note: Lower rank = Better industry performance (1 is best, {total_industries} is worst){Colors.END}")
         
         # Display style scores if available
         if style_scores:

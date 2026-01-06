@@ -23,3 +23,5 @@ FRED_API_KEY = os.environ.get('FRED_API_KEY')
 FRED_API_BASE_URL = "https://api.stlouisfed.org/fred/series/observations"
 
 
+
+

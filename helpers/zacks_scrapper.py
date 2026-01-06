@@ -153,6 +153,10 @@ def parse_zacks_data_from_html(html: str, url: str) -> dict:
     zacks_data = {
         'recommendation': None,
         'rank': None,
+        'industry_rank': None,
+        'industry_name': None,
+        'total_industries': None,
+        'percentile_text': None,
         'style_scores': {},
         'url': url
     }
@@ -321,6 +325,121 @@ def parse_zacks_data_from_html(html: str, url: str) -> dict:
             zacks_data['style_scores']['vgm'] = grade_map.get(vgm_grade, 0)
             zacks_data['style_scores']['vgm_grade'] = vgm_grade
     
+    # Try to find Zacks Industry Rank
+    # Based on actual HTML structure: <div class="zr_rankbox industry_rank">
+    # Pattern: "Bottom 6% (229 out of 244)" or "Top 10% (25 out of 265)"
+    # Industry count can be 244, 256, or 265 depending on classification system
+    # Be careful not to confuse with Zacks Rank (which is 1-5)
+    
+    # Method 1: Look for the industry_rank div with class "zr_rankbox industry_rank"
+    industry_rank_div = soup.select_one('.zr_rankbox.industry_rank, [class*="industry_rank"]')
+    if industry_rank_div:
+        # Look for the rank_view paragraph with the pattern "X out of Y"
+        rank_view = industry_rank_div.select_one('p.rank_view a.status, p.rank_view')
+        if rank_view:
+            rank_text = rank_view.get_text(strip=True)
+            # Match patterns like "Bottom 6% (229 out of 244)" or "Top 10% (25 out of 265)"
+            # Capture both the percentile text and the rank numbers
+            full_match = re.search(r'(Top|Bottom|Middle)\s+(\d+)%\s*\((\d+)\s*out\s*of\s*(\d+)\)', rank_text, re.IGNORECASE)
+            if full_match:
+                percentile_position = full_match.group(1)  # "Top", "Bottom", or "Middle"
+                percentile_value = int(full_match.group(2))  # e.g., 6
+                industry_rank = int(full_match.group(3))  # e.g., 229
+                total_industries = int(full_match.group(4))  # e.g., 244
+                
+                # Validate the numbers make sense
+                if 1 <= industry_rank <= total_industries and total_industries <= 300:
+                    zacks_data['industry_rank'] = industry_rank
+                    zacks_data['total_industries'] = total_industries
+                    zacks_data['percentile_text'] = f"{percentile_position} {percentile_value}%"
+            else:
+                # Fallback: Just try to extract the rank numbers without percentile
+                rank_match = re.search(r'\((\d+)\s*out\s*of\s*(\d+)\)', rank_text, re.IGNORECASE)
+                if rank_match:
+                    industry_rank = int(rank_match.group(1))
+                    total_industries = int(rank_match.group(2))
+                    # Validate the numbers make sense (rank should be <= total)
+                    if 1 <= industry_rank <= total_industries and total_industries <= 300:
+                        zacks_data['industry_rank'] = industry_rank
+                        zacks_data['total_industries'] = total_industries
+        
+        # Look for industry name in the second rank_view paragraph
+        industry_name_elem = industry_rank_div.select_one('p.rank_view a.sector')
+        if industry_name_elem:
+            industry_text = industry_name_elem.get_text(strip=True)
+            # Remove "Industry: " prefix if present
+            industry_name = re.sub(r'^Industry:\s*', '', industry_text, flags=re.IGNORECASE)
+            if industry_name and len(industry_name) > 3:
+                zacks_data['industry_name'] = industry_name
+    
+    # Method 2: Look for dt/dd pairs with "Industry Rank" label (fallback)
+    if not zacks_data.get('industry_rank'):
+        for dt in soup.find_all('dt'):
+            dt_text = dt.get_text()
+            # Make sure we're looking for "Industry Rank" specifically, not "Zacks Rank"
+            if 'Industry Rank' in dt_text and 'Zacks Rank' not in dt_text:
+                dd_elem = dt.find_next_sibling('dd')
+                if dd_elem:
+                    dd_text = dd_elem.get_text(strip=True)
+                    
+                    # Try to match full pattern with percentile
+                    full_match = re.search(r'(Top|Bottom|Middle)\s+(\d+)%\s*\((\d+)\s*out\s*of\s*(\d+)\)', dd_text, re.IGNORECASE)
+                    if full_match:
+                        percentile_position = full_match.group(1)
+                        percentile_value = int(full_match.group(2))
+                        industry_rank = int(full_match.group(3))
+                        total_industries = int(full_match.group(4))
+                        if 1 <= industry_rank <= total_industries and total_industries <= 300:
+                            zacks_data['industry_rank'] = industry_rank
+                            zacks_data['total_industries'] = total_industries
+                            zacks_data['percentile_text'] = f"{percentile_position} {percentile_value}%"
+                    else:
+                        # Try to match patterns like "42 out of 244" or "42 out of 265"
+                        rank_match = re.search(r'(\d+)\s*out\s*of\s*(\d+)', dd_text, re.IGNORECASE)
+                        if rank_match:
+                            industry_rank = int(rank_match.group(1))
+                            total_industries = int(rank_match.group(2))
+                            if 1 <= industry_rank <= total_industries and total_industries <= 300:
+                                zacks_data['industry_rank'] = industry_rank
+                                zacks_data['total_industries'] = total_industries
+                    
+                    # Try to extract industry name if present
+                    industry_link = dd_elem.find('a')
+                    if industry_link:
+                        industry_name = industry_link.get_text(strip=True)
+                        # Filter out numbers and short text
+                        if industry_name and len(industry_name) > 5 and not industry_name.isdigit():
+                            zacks_data['industry_name'] = industry_name
+                    break
+    
+    # Method 3: Search for patterns in the entire page text
+    if not zacks_data.get('industry_rank'):
+        # Search for full pattern with percentile first
+        full_pattern = re.compile(r'(Top|Bottom|Middle)\s+(\d+)%\s*\((\d+)\s*out\s*of\s*(\d+)\)', re.IGNORECASE)
+        match = full_pattern.search(soup.get_text())
+        if match:
+            percentile_position = match.group(1)
+            percentile_value = int(match.group(2))
+            industry_rank = int(match.group(3))
+            total_industries = int(match.group(4))
+            # Look for reasonable industry counts (typically 244, 256, or 265)
+            if 1 <= industry_rank <= total_industries and 200 <= total_industries <= 300:
+                zacks_data['industry_rank'] = industry_rank
+                zacks_data['total_industries'] = total_industries
+                zacks_data['percentile_text'] = f"{percentile_position} {percentile_value}%"
+        else:
+            # Fallback: Search for patterns like "(229 out of 244)" anywhere in the page
+            industry_rank_pattern = re.compile(r'\((\d+)\s*out\s*of\s*(\d+)\)', re.IGNORECASE)
+            matches = industry_rank_pattern.findall(soup.get_text())
+            for match in matches:
+                industry_rank = int(match[0])
+                total_industries = int(match[1])
+                # Look for reasonable industry counts (typically 244, 256, or 265)
+                if 1 <= industry_rank <= total_industries and 200 <= total_industries <= 300:
+                    zacks_data['industry_rank'] = industry_rank
+                    zacks_data['total_industries'] = total_industries
+                    break
+    
     return zacks_data
 
 
@@ -350,6 +469,10 @@ def get_zacks_recommendation_for_ticker(ticker: str) -> dict:
     return {
         'recommendation': None,
         'rank': None,
+        'industry_rank': None,
+        'industry_name': None,
+        'total_industries': None,
+        'percentile_text': None,
         'style_scores': {},
         'url': None
     }
